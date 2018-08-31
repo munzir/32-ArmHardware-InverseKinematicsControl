@@ -42,16 +42,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   int dof = mRobot->getNumDofs();
   
   // ======================= Tunable Parameters
-  // bool isBetaConsistent;
-  // double currentLimitFactor;
   mKp.setZero();
-  // mKv.setZero();
   mKpOr.setZero();
   mKvOr.setZero();
   mWReg.setZero();
-  // currLow << -9.5, -9.5, -7.5, -7.5, -5.5, -5.5, -5.5;
-  // currHigh << 9.5, 9.5, 7.5, 7.5, 5.5, 5.5, 5.5;
-
 
   Configuration * cfg = Configuration::create();
   const char * scope = "";
@@ -72,10 +66,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     str = cfg->lookupString(scope, "Kp");
     stream.str(str); for(int i=0; i<3; i++) stream >> mKp(i, i); stream.clear();
     cout << "Kp: " << mKp(0, 0) << ", " << mKp(1, 1) << ", " << mKp(2, 2) << endl;
-
-    // str = cfg->lookupString(scope, "Kv");
-    // stream.str(str); for(int i=0; i<3; i++) stream >> mKv(i, i); stream.clear();
-    // cout << "Kv: " << mKv(0, 0) << ", " << mKv(1, 1) << ", " << mKv(2, 2) << endl;
 
     str = cfg->lookupString(scope, "KpOr");
     stream.str(str); for(int i=0; i<3; i++) stream >> mKpOr(i, i); stream.clear();
@@ -264,8 +254,7 @@ void Controller::update(const Eigen::Vector3d& _targetPosition, const Eigen::Vec
   Eigen::Matrix<double, 3, 7> PPos = Jv;
   Eigen::Vector3d bPos = -(-dxref) ;
 
- // End-effector Orientation
-  /*
+  // End-effector Orientation
   Eigen::Quaterniond quat(mEndEffector->getTransform().rotation());
   double quat_w = quat.w(); 
   Eigen::Vector3d quat_xyz(quat.x(), quat.y(), quat.z());
@@ -283,33 +272,29 @@ void Controller::update(const Eigen::Vector3d& _targetPosition, const Eigen::Vec
   math::AngularJacobian dJw = mEndEffector->getAngularJacobianDeriv();  // 3 x n
   Eigen::Matrix<double, 3, 7> POr = Jw;
   Eigen::Vector3d bOr = -(dJw*mdq - dwref);
-  */
-
-  // Speed Regulation
   
+  // Speed Regulation
   Eigen::MatrixXd PReg = Eigen::Matrix<double, 7, 7>::Identity();
   Eigen::MatrixXd bReg = -mKvReg*mdq;
   
-
-   // Optimizer stuff
+  // Optimizer stuff
   nlopt::opt opt(nlopt::LD_SLSQP, 7);
   OptParams optParams;
   std::vector<double> dq_vec(7);
   double minf;
 
   // Perform optimization to find joint speeds
-  Eigen::MatrixXd P(PPos.rows() /*+ POr.rows() */+ PReg.rows(), PPos.cols() );
+  Eigen::MatrixXd P(PPos.rows() + POr.rows() + PReg.rows(), PPos.cols() );
   P << mWPos*PPos,
-       /*mWOr*POr,*/
+       mWOr*POr,
        mWReg*PReg;
   
-  Eigen::VectorXd b(bPos.rows() /*+ bOr.rows()*/ + bReg.rows(), bPos.cols() );
+  Eigen::VectorXd b(bPos.rows() + bOr.rows() + bReg.rows(), bPos.cols() );
   b << mWPos*bPos,
-       /*mWOr*bOr,*/
+       mWOr*bOr,
        mWReg*bReg;
        
   optParams.P = P;
-
   optParams.b = b;
   opt.set_min_objective(optFunc, &optParams);
   opt.set_xtol_rel(1e-4);
@@ -318,22 +303,19 @@ void Controller::update(const Eigen::Vector3d& _targetPosition, const Eigen::Vec
   
   // Get return of optimizer
   Eigen::Matrix<double, 7, 1> dq_target(dq_vec.data());
-  cout << "dq_target: " << dq_target[0] << " " << dq_target[1] << " " << dq_target[2] << " "
-    << dq_target[3] << " " << dq_target[4] << " " << dq_target[5] << " " << dq_target[6] << endl;
+  // cout << "dq_target: " << dq_target[0] << " " << dq_target[1] << " " << dq_target[2] << " "
+  //   << dq_target[3] << " " << dq_target[4] << " " << dq_target[5] << " " << dq_target[6] << endl;
   
   //Use double array for somatic_motor_cmd input
   for (int i = 0; i < 7; i++){
     dq_cmd[i] = dq_target(i);
   }
 
-
   // =========================== Send Velocity Command ===========================
-
   if(mEnable){
     somatic_motor_cmd(&mDaemon_cx, &mSomaticSinglearm, VELOCITY, dq_cmd, 7, NULL);
   }
   
-
   // Free buffers allocated during this cycle
   aa_mem_region_release(&mDaemon_cx.memreg); 
 

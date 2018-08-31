@@ -32,8 +32,6 @@
 #ifndef EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
 #define EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
 
-// #include <Eigen/Eigen>
-
 #include <dart/dart.hpp>
 
 #include <unistd.h> //for usleep thing
@@ -56,12 +54,9 @@
 
 #include <nlopt.hpp>
 
-
-
 #define VELOCITY SOMATIC__MOTOR_PARAM__MOTOR_VELOCITY
 #define POSITION SOMATIC__MOTOR_PARAM__MOTOR_POSITION
 #define CURRENT SOMATIC__MOTOR_PARAM__MOTOR_CURRENT
-
 
 using namespace std;
 using namespace config4cpp;
@@ -119,25 +114,12 @@ private:
 
   double mqInit[7] = {0.0, -0.5, 0.0, 0.8, 0.0, 0.0, 0.0};
   
-  // Eigen::Matrix<double, 7, 1> currLow;
-  // Eigen::Matrix<double, 7, 1> currHigh; 
-  // Eigen::Matrix<double, 7, 1> torqueLow;
-  // Eigen::Matrix<double, 7, 1> torqueHigh; 
-   Eigen::Matrix<double, 7, 1> dqref; 
+  Eigen::Matrix<double, 7, 1> dqref; 
 
   double mPriorTime;
   long mStartTime;
   
-  // Eigen::Matrix<double, 3, 1> mZeroCol;
-  // Eigen::Matrix<double, 3, 7> mZero7Col;
-
   Eigen::Matrix<double, 7, 1> mq, mdq;
-
-  // Eigen::Matrix<double, 7, 1> mCurLim;
-
-  // Eigen::Matrix<double, 4, 4> mBaseTf;
-
-  // double mpsi;
 
   int mSteps;
 
